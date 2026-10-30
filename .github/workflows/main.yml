@@ -1,3 +1,4 @@
+
 name: Build Rhythm APK
 
 on:
@@ -25,18 +26,13 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      
-      - name: Configure preinstalled Android SDK
+      - name: Configure Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_HOME"
-          test -d "$ANDROID_HOME"
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
-            
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -50,8 +46,9 @@ jobs:
           if [ -z "$JAMENDO_CLIENT_ID" ]; then
             echo "::error::JAMENDO_CLIENT_ID secret is missing"
             exit 1
-          fi          
-                  - name: Locate Android project
+          fi
+
+      - name: Locate Android project
         run: |
           echo "Searching for Gradle project..."
           find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \)
@@ -60,18 +57,19 @@ jobs:
         env:
           JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
         run: |
-          PROJECT_DIR=$(dirname "$(find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -n 1)")
+          SETTINGS_FILE=$(find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -n 1)
 
-          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
-            echo "::error::Android Gradle project not found in repository."
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "::error::Gradle settings file not found"
             exit 1
           fi
 
+          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
           echo "Building from: $PROJECT_DIR"
           cd "$PROJECT_DIR"
           gradle --no-daemon --stacktrace :app:assembleDebug
 
-            - name: Verify APK
+      - name: Verify APK
         run: |
           APK=$(find . -type f -path "*/app/build/outputs/apk/debug/app-debug.apk" | head -n 1)
 
@@ -85,7 +83,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 8
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
 
-            - name: Upload Rhythm APK
+      - name: Upload Rhythm APK
         uses: actions/upload-artifact@v4
         with:
           name: rhythm-debug-apk
