@@ -1,3 +1,4 @@
+
 package com.rhythm.music
 
 import android.Manifest
@@ -30,12 +31,14 @@ class MainActivity : AppCompatActivity() {
     private val white = Color.WHITE
 
     private val clientId = "1c57991d"
+
     private val prefs by lazy {
         getSharedPreferences("rhythm_data", MODE_PRIVATE)
     }
 
     private val tracks = mutableListOf<Track>()
     private val favourites = mutableSetOf<String>()
+
     private var currentIndex = -1
     private var currentTitle = "Choose a song"
     private var currentArtist = "Rhythm Music"
@@ -69,7 +72,8 @@ class MainActivity : AppCompatActivity() {
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(
-                this, Manifest.permission.POST_NOTIFICATIONS
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
@@ -97,6 +101,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val filter = IntentFilter(STATE_ACTION)
+
         if (Build.VERSION.SDK_INT >= 33) {
             registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
         } else {
@@ -113,15 +118,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         val scroll = ScrollView(this)
+
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
 
         scroll.addView(content)
+
         root.addView(
             scroll,
             LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f
             )
         )
 
@@ -152,7 +161,9 @@ class MainActivity : AppCompatActivity() {
             setTextColor(platinum)
             gravity = Gravity.CENTER
             setPadding(18, 4, 8, 4)
-            setOnClickListener { sendAction(ACTION_TOGGLE) }
+            setOnClickListener {
+                sendAction(ACTION_TOGGLE)
+            }
             setOnLongClickListener {
                 showHint("Play / Pause")
                 true
@@ -163,9 +174,12 @@ class MainActivity : AppCompatActivity() {
             miniTitle,
             LinearLayout.LayoutParams(0, -2, 1f)
         )
+
         mini.addView(miniPlay)
 
-        mini.setOnClickListener { openPlayer() }
+        mini.setOnClickListener {
+            openPlayer()
+        }
 
         root.addView(
             mini,
@@ -185,6 +199,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 18, 0, 14)
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
+
         content.addView(view)
     }
 
@@ -199,6 +214,7 @@ class MainActivity : AppCompatActivity() {
             setTextColor(color)
             setPadding(4, 8, 4, 8)
         }
+
         content.addView(view)
         return view
     }
@@ -214,7 +230,11 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             setPadding(14, 13, 14, 13)
             setBackgroundColor(panel)
-            setOnClickListener { action() }
+
+            setOnClickListener {
+                action()
+            }
+
             setOnLongClickListener {
                 showHint(text)
                 true
@@ -235,11 +255,12 @@ class MainActivity : AppCompatActivity() {
             setHintTextColor(muted)
             setTextColor(white)
             textSize = 15f
-            singleLine = true
+            setSingleLine(true)
             inputType = InputType.TYPE_CLASS_TEXT
             setPadding(14, 12, 14, 12)
             setBackgroundColor(panel)
         }
+
         content.addView(
             searchInput,
             LinearLayout.LayoutParams(-1, -2)
@@ -250,12 +271,15 @@ class MainActivity : AppCompatActivity() {
         })
 
         heading("Explore")
+
         content.addView(makeButton("♫  All Music") {
             showAllSongs()
         })
+
         content.addView(makeButton("♡  Favourites") {
             showFavourites()
         })
+
         content.addView(makeButton("▤  Playlists") {
             showPlaylists()
         })
@@ -269,20 +293,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun searchSongs(term: String) {
         if (term.isBlank()) {
-            Toast.makeText(this, "Enter a song or artist name", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "Enter a song or artist name",
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
 
+        clearContent()
         heading("Searching…")
 
         thread {
+            var connection: HttpURLConnection? = null
+
             try {
                 val query = URLEncoder.encode(term, "UTF-8")
+
                 val address =
                     "https://api.jamendo.com/v3.0/tracks/" +
                     "?client_id=$clientId&format=json&limit=25&search=$query"
 
-                val connection =
+                connection =
                     URL(address).openConnection() as HttpURLConnection
 
                 connection.connectTimeout = 15000
@@ -291,7 +323,6 @@ class MainActivity : AppCompatActivity() {
                 val response = connection.inputStream.bufferedReader().use {
                     it.readText()
                 }
-                connection.disconnect()
 
                 val json = JSONObject(response)
                 val data = json.getJSONArray("results")
@@ -304,8 +335,12 @@ class MainActivity : AppCompatActivity() {
                     if (audio.isNotBlank() && audio != "null") {
                         found.add(
                             Track(
+                                id = item.optString("id"),
                                 name = item.optString("name", "Unknown"),
-                                artist = item.optString("artist_name", "Unknown artist"),
+                                artist = item.optString(
+                                    "artist_name",
+                                    "Unknown artist"
+                                ),
                                 audioUrl = audio
                             )
                         )
@@ -316,6 +351,7 @@ class MainActivity : AppCompatActivity() {
                     tracks.clear()
                     tracks.addAll(found)
                     showAllSongs()
+
                     if (found.isEmpty()) {
                         Toast.makeText(
                             this,
@@ -324,6 +360,7 @@ class MainActivity : AppCompatActivity() {
                         ).show()
                     }
                 }
+
             } catch (e: Exception) {
                 runOnUiThread {
                     Toast.makeText(
@@ -331,7 +368,11 @@ class MainActivity : AppCompatActivity() {
                         "Search failed: ${e.message}",
                         Toast.LENGTH_LONG
                     ).show()
+                    showHome()
                 }
+
+            } finally {
+                connection?.disconnect()
             }
         }
     }
@@ -341,7 +382,11 @@ class MainActivity : AppCompatActivity() {
         heading("Discover Music")
 
         if (tracks.isEmpty()) {
-            addText("Search for a song to discover music.", 14f, muted)
+            addText(
+                "Search for a song to discover music.",
+                14f,
+                muted
+            )
             return
         }
 
@@ -379,7 +424,11 @@ class MainActivity : AppCompatActivity() {
             textSize = 22f
             setTextColor(platinum)
             setPadding(14, 8, 14, 8)
-            setOnClickListener { playTrack(index) }
+
+            setOnClickListener {
+                playTrack(index)
+            }
+
             setOnLongClickListener {
                 showHint("Play")
                 true
@@ -391,24 +440,33 @@ class MainActivity : AppCompatActivity() {
             textSize = 22f
             setTextColor(platinum)
             setPadding(10, 8, 10, 8)
+
             setOnClickListener {
                 toggleFavourite(track)
                 text = if (favourites.contains(track.audioUrl)) "♥" else "♡"
             }
+
             setOnLongClickListener {
                 showHint("Favourite")
                 true
             }
         }
 
-        row.addView(details, LinearLayout.LayoutParams(0, -2, 1f))
+        row.addView(
+            details,
+            LinearLayout.LayoutParams(0, -2, 1f)
+        )
+
         row.addView(like)
         row.addView(play)
 
-        row.setOnClickListener { playTrack(index) }
+        row.setOnClickListener {
+            playTrack(index)
+        }
 
         val params = LinearLayout.LayoutParams(-1, -2)
         params.setMargins(0, 5, 0, 5)
+
         content.addView(row, params)
     }
 
@@ -420,18 +478,22 @@ class MainActivity : AppCompatActivity() {
 
         val intent = Intent(this, PlaybackService::class.java).apply {
             action = ACTION_PLAY
+
             putStringArrayListExtra(
                 "urls",
                 ArrayList(tracks.map { it.audioUrl })
             )
+
             putStringArrayListExtra(
                 "names",
                 ArrayList(tracks.map { it.name })
             )
+
             putStringArrayListExtra(
                 "artists",
                 ArrayList(tracks.map { it.artist })
             )
+
             putExtra("index", index)
         }
 
@@ -441,21 +503,44 @@ class MainActivity : AppCompatActivity() {
             } else {
                 startService(intent)
             }
+
             currentTitle = selected.name
             currentArtist = selected.artist
+
             miniTitle.text = "$currentTitle • $currentArtist"
-            Toast.makeText(this, "Playing ${selected.name}", Toast.LENGTH_SHORT).show()
+
+            Toast.makeText(
+                this,
+                "Playing ${selected.name}",
+                Toast.LENGTH_SHORT
+            ).show()
+
         } catch (e: Exception) {
-            Toast.makeText(this, "Unable to play song", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                this,
+                "Unable to play song: ${e.message}",
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
     private fun sendAction(action: String, position: Int? = null) {
         val intent = Intent(this, PlaybackService::class.java).apply {
             this.action = action
-            position?.let { putExtra("position", it) }
+            position?.let {
+                putExtra("position", it)
+            }
         }
-        startService(intent)
+
+        try {
+            startService(intent)
+        } catch (e: Exception) {
+            Toast.makeText(
+                this,
+                "Player service is not running",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 
     private fun openPlayer() {
@@ -484,13 +569,21 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
         }
 
-        fun control(symbol: String, hint: String, action: () -> Unit): TextView {
+        fun control(
+            symbol: String,
+            hint: String,
+            action: () -> Unit
+        ): TextView {
             return TextView(this).apply {
                 text = symbol
                 textSize = 25f
                 setTextColor(platinum)
                 setPadding(16, 16, 16, 16)
-                setOnClickListener { action() }
+
+                setOnClickListener {
+                    action()
+                }
+
                 setOnLongClickListener {
                     showHint(hint)
                     true
@@ -501,28 +594,36 @@ class MainActivity : AppCompatActivity() {
         controls.addView(control("|◀", "Previous") {
             sendAction(ACTION_PREVIOUS)
         })
+
         controls.addView(control("▶ / Ⅱ", "Play / Pause") {
             sendAction(ACTION_TOGGLE)
         })
+
         controls.addView(control("▶|", "Next") {
             sendAction(ACTION_NEXT)
         })
 
         val seek = SeekBar(this)
         seek.max = 1000
-        seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(
-                bar: SeekBar?,
-                progress: Int,
-                fromUser: Boolean
-            ) {}
 
-            override fun onStartTrackingTouch(bar: SeekBar?) {}
+        seek.setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    bar: SeekBar?,
+                    progress: Int,
+                    fromUser: Boolean
+                ) {}
 
-            override fun onStopTrackingTouch(bar: SeekBar?) {
-                sendAction(ACTION_SEEK, bar?.progress ?: 0)
+                override fun onStartTrackingTouch(bar: SeekBar?) {}
+
+                override fun onStopTrackingTouch(bar: SeekBar?) {
+                    sendAction(
+                        ACTION_SEEK,
+                        bar?.progress ?: 0
+                    )
+                }
             }
-        })
+        )
 
         box.addView(title)
         box.addView(artist)
@@ -543,11 +644,15 @@ class MainActivity : AppCompatActivity() {
         } else {
             favourites.add(track.audioUrl)
         }
+
         saveFavourites()
     }
 
     private fun loadFavourites() {
-        val array = JSONArray(prefs.getString("favourites", "[]"))
+        val array = JSONArray(
+            prefs.getString("favourites", "[]")
+        )
+
         for (i in 0 until array.length()) {
             favourites.add(array.optString(i))
         }
@@ -555,8 +660,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveFavourites() {
         val array = JSONArray()
-        favourites.forEach { array.put(it) }
-        prefs.edit().putString("favourites", array.toString()).apply()
+
+        favourites.forEach {
+            array.put(it)
+        }
+
+        prefs.edit()
+            .putString("favourites", array.toString())
+            .apply()
     }
 
     private fun showFavourites() {
@@ -568,7 +679,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (likedTracks.isEmpty()) {
-            addText("No favourites in the current search list.", 14f, muted)
+            addText(
+                "No favourites in the current search list.",
+                14f,
+                muted
+            )
             return
         }
 
@@ -591,6 +706,7 @@ class MainActivity : AppCompatActivity() {
                 .setView(input)
                 .setPositiveButton("Create") { _, _ ->
                     val name = input.text.toString().trim()
+
                     if (name.isNotEmpty()) {
                         val list = getPlaylistNames().toMutableSet()
                         list.add(name)
@@ -606,7 +722,7 @@ class MainActivity : AppCompatActivity() {
             content.addView(makeButton("♫  $name") {
                 Toast.makeText(
                     this,
-                    "Playlist created: $name. Add-song management will be added in the next update.",
+                    "Playlist created: $name. Add-song management is not implemented yet.",
                     Toast.LENGTH_LONG
                 ).show()
             })
@@ -614,21 +730,4 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getPlaylistNames(): Set<String> {
-        return prefs.getStringSet("playlist_names", emptySet()) ?: emptySet()
-    }
-
-    private fun savePlaylistNames(names: Set<String>) {
-        prefs.edit().putStringSet("playlist_names", names).apply()
-    }
-
-    private fun showHint(text: String) {
-        Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        try {
-            unregisterReceiver(receiver)
-        } catch (_: Exception) {}
-    }
-}
+   
