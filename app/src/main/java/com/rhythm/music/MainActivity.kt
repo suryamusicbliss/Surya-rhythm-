@@ -1,4 +1,3 @@
-
 package com.rhythm.music
 
 import android.app.Activity
@@ -7,6 +6,7 @@ import android.graphics.Color
 import android.view.ViewGroup
 import android.widget.*
 import android.text.InputType
+import android.media.MediaPlayer
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -17,7 +17,7 @@ class MainActivity : Activity() {
 
     private lateinit var status: TextView
     private lateinit var results: LinearLayout
-    private var player: android.media.MediaPlayer? = null
+    private var player: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +48,29 @@ class MainActivity : Activity() {
         root.addView(input)
 
         root.addView(Button(this).apply {
+            text = "Set Jamendo Client ID"
+            setOnClickListener {
+                val field = EditText(this@MainActivity)
+                field.hint = "Enter Client ID"
+
+                val prefs = getSharedPreferences("rhythm", MODE_PRIVATE)
+                field.setText(prefs.getString("client_id", ""))
+
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Jamendo API Setup")
+                    .setView(field)
+                    .setPositiveButton("Save") { _, _ ->
+                        prefs.edit()
+                            .putString("client_id", field.text.toString().trim())
+                            .apply()
+                        status.text = "Client ID saved"
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+        })
+
+        root.addView(Button(this).apply {
             text = "Search Music"
             setOnClickListener {
                 val term = input.text.toString().trim()
@@ -63,9 +86,11 @@ class MainActivity : Activity() {
         root.addView(status)
 
         val scroll = ScrollView(this)
+
         results = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
+
         scroll.addView(results)
 
         root.addView(scroll, LinearLayout.LayoutParams(
@@ -80,7 +105,7 @@ class MainActivity : Activity() {
             .getString("client_id", "")
 
         if (id.isNullOrBlank()) {
-            status.text = "Jamendo Client ID not configured."
+            status.text = "Please set Jamendo Client ID first"
             return
         }
 
@@ -156,7 +181,7 @@ class MainActivity : Activity() {
         try {
             player?.release()
 
-            player = android.media.MediaPlayer().apply {
+            player = MediaPlayer().apply {
                 setDataSource(url)
 
                 setOnPreparedListener {
