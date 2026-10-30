@@ -21,10 +21,10 @@ import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
 
-    private val bg = Color.rgb(12, 13, 17)
-    private val panel = Color.rgb(27, 28, 34)
-    private val gold = Color.rgb(225, 190, 125)
-    private val muted = Color.rgb(155, 153, 148)
+    private val bg = Color.rgb(18, 18, 18)
+private val panel = Color.rgb(40, 40, 40)
+private val gold = Color.rgb(30, 215, 96)
+private val muted = Color.rgb(179, 179, 179)
 
     private lateinit var results: LinearLayout
     private lateinit var searchInput: EditText
@@ -103,7 +103,7 @@ class MainActivity : Activity() {
             setPadding(dp(20), dp(22), dp(20), dp(22))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(75, 57, 38), Color.rgb(25, 25, 30))
+                intArrayOf(Color.rgb(25, 70, 43), Color.rgb(18, 18, 18))
             ).apply { cornerRadius = dp(24).toFloat() }
         }
 
