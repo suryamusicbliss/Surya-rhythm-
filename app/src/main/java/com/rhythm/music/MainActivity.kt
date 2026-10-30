@@ -311,39 +311,142 @@ hero.addView(
 content.addView(developerCredit)
         setContentView(root)
     }
-     private fun openPlayerScreen() {
-    val dialog = Dialog(this)
+    
+private fun openPlayerScreen() {
+    val dialog = android.app.Dialog(this)
+
     val layout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER
-        setPadding(dp(24), dp(30), dp(24), dp(30))
-        setBackgroundColor(bg)
+        setPadding(dp(28), dp(35), dp(28), dp(25))
+        setBackgroundColor(Color.rgb(10, 13, 19))
     }
+
+    val heading = label(
+        "RHYTHM",
+        14f,
+        gold,
+        true
+    ).apply {
+        gravity = Gravity.CENTER
+        letterSpacing = 0.25f
+    }
+    layout.addView(heading)
+
+    addSpace(layout, 35)
 
     val artwork = TextView(this).apply {
         text = "♫"
-        textSize = 100f
+        textSize = 76f
         gravity = Gravity.CENTER
         setTextColor(gold)
-        background = rounded(panel, 24)
+        background = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = dp(24).toFloat()
+            colors = intArrayOf(
+                Color.rgb(42, 57, 78),
+                Color.rgb(20, 27, 39)
+            )
+        }
     }
-    layout.addView(artwork, LinearLayout.LayoutParams(-1, dp(280)))
 
-    layout.addView(label("NOW PLAYING", 12f, gold, true))
-    layout.addView(label(currentSongName, 24f, Color.WHITE, true))
-    layout.addView(label(currentSongArtist, 15f, muted))
+    layout.addView(
+        artwork,
+        LinearLayout.LayoutParams(
+            dp(230),
+            dp(230)
+        ).apply {
+            gravity = Gravity.CENTER
+        }
+    )
+
+    addSpace(layout, 35)
+
+    val title = label(
+        currentSongName,
+        23f,
+        Color.WHITE,
+        true
+    ).apply {
+        gravity = Gravity.CENTER
+    }
+    layout.addView(title)
+
+    addSpace(layout, 8)
+
+    val artist = label(
+        currentSongArtist,
+        14f,
+        muted
+    ).apply {
+        gravity = Gravity.CENTER
+    }
+    layout.addView(artist)
+
+    addSpace(layout, 30)
+
+    val playPause = Button(this).apply {
+        text = if (player?.isPlaying == true) "PAUSE" else "PLAY"
+        setTextColor(Color.rgb(10, 13, 19))
+        setBackgroundTintList(
+            android.content.res.ColorStateList.valueOf(gold)
+        )
+
+        setOnClickListener {
+            val musicPlayer = player
+
+            if (musicPlayer != null) {
+                if (musicPlayer.isPlaying) {
+                    musicPlayer.pause()
+                    text = "PLAY"
+                } else {
+                    musicPlayer.start()
+                    text = "PAUSE"
+                }
+            }
+        }
+    }
+
+    layout.addView(
+        playPause,
+        LinearLayout.LayoutParams(
+            -1,
+            dp(52)
+        )
+    )
+
+    addSpace(layout, 15)
 
     val close = Button(this).apply {
         text = "CLOSE PLAYER"
-        setOnClickListener { dialog.dismiss() }
+        setTextColor(Color.WHITE)
+        setBackgroundTintList(
+            android.content.res.ColorStateList.valueOf(panel)
+        )
+        setOnClickListener {
+            dialog.dismiss()
+        }
     }
-    layout.addView(close)
+
+    layout.addView(
+        close,
+        LinearLayout.LayoutParams(
+            -1,
+            dp(48)
+        )
+    )
 
     dialog.setContentView(layout)
-    dialog.window?.setLayout(-1, -1)
+    dialog.window?.setBackgroundDrawableResource(
+        android.R.color.transparent
+    )
+    dialog.window?.setLayout(
+        -1,
+        -1
+    )
     dialog.show()
     dialog.window?.setLayout(-1, -1)
-     }
+}
+
     private fun searchMusic() {
         val term = searchInput.text.toString().trim()
         if (term.isEmpty()) {
