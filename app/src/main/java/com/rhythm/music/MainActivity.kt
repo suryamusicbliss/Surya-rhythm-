@@ -103,8 +103,26 @@ private var isPlayerVisible = false
         content.addView(label("FEEL EVERY BEAT", 10f, muted, true))
         addSpace(content, 28)
 
-        val greeting = label("Your sound.\nYour universe.", 31f, Color.WHITE, true)
-        content.addView(greeting)
+        val greeting = label(
+    "An experience\nbeyond listening.",
+    32f,
+    Color.WHITE,
+    true
+).apply {
+    letterSpacing = -0.02f
+    setLineSpacing(dp(5).toFloat(), 1f)
+}
+content.addView(greeting)
+
+addSpace(content, 10)
+
+content.addView(
+    label(
+        "Discover sound. Experience emotion.",
+        14f,
+        muted
+    )
+)
 
         addSpace(content, 18)
 
@@ -118,11 +136,27 @@ private var isPlayerVisible = false
             ).apply { cornerRadius = dp(24).toFloat() }
         }
 
-        hero.addView(label("✦  THE RHYTHM EXPERIENCE", 11f, gold, true))
-        addSpace(hero, 16)
-        hero.addView(label("Music that\nmoves with you.", 25f, Color.WHITE, true))
-        addSpace(hero, 8)
-        hero.addView(label("Discover your next favourite sound.", 13f, Color.LTGRAY))
+        hero.addView(label("✦  CURATED FOR YOUR SENSES", 11f, gold, true))
+addSpace(hero, 18)
+
+hero.addView(
+    label(
+        "Every beat.\nA new feeling.",
+        28f,
+        Color.WHITE,
+        true
+    )
+)
+
+addSpace(hero, 10)
+
+hero.addView(
+    label(
+        "A more personal way to experience music.",
+        13f,
+        Color.rgb(205, 214, 225)
+    )
+)
         addSpace(hero, 18)
 
         val explore = Button(this).apply {
