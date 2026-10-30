@@ -249,7 +249,16 @@ class MainActivity : Activity() {
         val miniParams = LinearLayout.LayoutParams(-1, dp(52))
         miniParams.setMargins(dp(14), dp(4), dp(14), dp(8))
         root.addView(mini, miniParams)
+        val developerCredit = label(
+    "Developed by Shubham Upadhyay",
+    11f,
+    muted
+).apply {
+    gravity = Gravity.CENTER
+    setPadding(0, dp(10), 0, dp(12))
+}
 
+content.addView(developerCredit)
         setContentView(root)
     }
 
