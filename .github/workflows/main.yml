@@ -51,26 +51,45 @@ jobs:
             echo "::error::JAMENDO_CLIENT_ID secret is missing"
             exit 1
           fi          
-            - name: Build Rhythm APK
-        working-directory: Rhythm-Android-Project-SDK-Workflow
+                  - name: Locate Android project
+        run: |
+          echo "Searching for Gradle project..."
+          find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \)
+
+      - name: Build Rhythm APK
         env:
           JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
         run: |
+          PROJECT_DIR=$(dirname "$(find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -n 1)")
+
+          if [ -z "$PROJECT_DIR" ] || [ "$PROJECT_DIR" = "." ]; then
+            echo "::error::Android Gradle project not found in repository."
+            exit 1
+          fi
+
+          echo "Building from: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
           gradle --no-daemon --stacktrace :app:assembleDebug
 
-      - name: Verify APK
+            - name: Verify APK
         run: |
-          APK="app/build/outputs/apk/debug/app-debug.apk"
-          test -s "$APK" || exit 1
+          APK=$(find . -type f -path "*/app/build/outputs/apk/debug/app-debug.apk" | head -n 1)
+
+          if [ -z "$APK" ]; then
+            echo "::error::APK file not found"
+            exit 1
+          fi
+
+          echo "Found APK: $APK"
           ls -lh "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 8
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
 
-      - name: Upload Rhythm APK
+            - name: Upload Rhythm APK
         uses: actions/upload-artifact@v4
         with:
           name: rhythm-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: "**/app/build/outputs/apk/debug/app-debug.apk"
           if-no-files-found: error
           retention-days: 14
           
