@@ -1,36 +1,44 @@
 package com.rhythm.music
 
-import android.app.*
-import android.content.*
-import android.media.*
-import android.net.Uri
-import android.os.*
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Intent
+import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.os.Build
+import android.os.Handler
+import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 
 class PlaybackService : Service() {
 
     companion object {
-        const val PLAY = "RHYTHM_PLAY"
-        const val TOGGLE = "RHYTHM_TOGGLE"
-        const val NEXT = "RHYTHM_NEXT"
-        const val PREVIOUS = "RHYTHM_PREVIOUS"
-        const val SEEK = "RHYTHM_SEEK"
-        const val STATE = "RHYTHM_STATE"
+        const val PLAY = "com.rhythm.music.PLAY"
+        const val TOGGLE = "com.rhythm.music.TOGGLE"
+        const val NEXT = "com.rhythm.music.NEXT"
+        const val PREVIOUS = "com.rhythm.music.PREVIOUS"
+        const val SEEK = "com.rhythm.music.SEEK"
+        const val STATE = "com.rhythm.music.STATE"
 
         const val CHANNEL = "rhythm_music"
         const val NOTIFICATION_ID = 101
     }
 
     private var player: MediaPlayer? = null
+
     private var urls = arrayListOf<String>()
     private var names = arrayListOf<String>()
     private var artists = arrayListOf<String>()
+
     private var index = 0
-
-    private val handler = Handler(Looper.getMainLooper())
-
     private var title = "Nothing playing"
     private var artist = "Unknown artist"
+
+    private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate() {
         super.onCreate()
@@ -61,15 +69,20 @@ class PlaybackService : Service() {
             }
 
             TOGGLE -> {
-                val p = player ?: return START_NOT_STICKY
+                val currentPlayer = player
 
-                if (p.isPlaying) {
-                    p.pause()
-                } else {
-                    p.start()
+                if (currentPlayer != null) {
+                    try {
+                        if (currentPlayer.isPlaying) {
+                            currentPlayer.pause()
+                        } else {
+                            currentPlayer.start()
+                        }
+                        publish()
+                    } catch (_: Exception) {
+                        publish()
+                    }
                 }
-
-                publish()
             }
 
             NEXT -> {
@@ -87,10 +100,26 @@ class PlaybackService : Service() {
             }
 
             SEEK -> {
-                val p = player
-                if (p != null && p.isPlaying || p != null) {
-                    val position = intent.getIntExtra("position", 0)
-                    p.seekTo(position.coerceIn(0, p.duration))
+                val currentPlayer = player
+
+                if (currentPlayer != null) {
+                    try {
+                        val progress = intent.getIntExtra(
+                            "position",
+                            0
+                        ).coerceIn(0, 1000)
+
+                        val duration = currentPlayer.duration
+
+                        val targetPosition =
+                            (duration.toLong() * progress / 1000)
+                                .toInt()
+
+                        currentPlayer.seekTo(targetPosition)
+                        publish()
+
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }
@@ -99,63 +128,67 @@ class PlaybackService : Service() {
     }
 
     private fun playCurrent() {
-        if (urls.isEmpty() || index !in urls.indices) return
+        if (urls.isEmpty() || index !in urls.indices) {
+            publish()
+            return
+        }
 
         title = names.getOrNull(index) ?: "Unknown track"
         artist = artists.getOrNull(index) ?: "Unknown artist"
 
-        player?.release()
+        handler.removeCallbacksAndMessages(null)
 
         try {
-            player = MediaPlayer().apply {
-
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(
-                            AudioAttributes.CONTENT_TYPE_MUSIC
-                        )
-                        .build()
-                )
-
-                setDataSource(
-                    this@PlaybackService,
-                    Uri.parse(urls[index])
-                )
-
-                setOnPreparedListener {
-                    it.start()
-                    startForeground(
-                        NOTIFICATION_ID,
-                        notification()
-                    )
-                    publish()
-                    startUpdates()
-                }
-
-                setOnCompletionListener {
-                    if (index < urls.lastIndex) {
-                        index++
-                        playCurrent()
-                    } else {
-                        publish()
-                    }
-                }
-
-                setOnErrorListener { _, _, _ ->
-                    publish()
-                    true
-                }
-
-                prepareAsync()
-            }
+            player?.release()
+            player = null
 
             startForeground(
                 NOTIFICATION_ID,
                 notification()
             )
 
+            val newPlayer = MediaPlayer()
+            player = newPlayer
+
+            newPlayer.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(
+                        AudioAttributes.CONTENT_TYPE_MUSIC
+                    )
+                    .build()
+            )
+
+            newPlayer.setOnPreparedListener { preparedPlayer ->
+                try {
+                    preparedPlayer.start()
+                    publish()
+                    startUpdates()
+                } catch (_: Exception) {
+                    publish()
+                }
+            }
+
+            newPlayer.setOnCompletionListener {
+                if (index < urls.lastIndex) {
+                    index++
+                    playCurrent()
+                } else {
+                    publish()
+                }
+            }
+
+            newPlayer.setOnErrorListener { _, _, _ ->
+                publish()
+                true
+            }
+
+            newPlayer.setDataSource(urls[index])
+            newPlayer.prepareAsync()
+
         } catch (_: Exception) {
+            player?.release()
+            player = null
             publish()
         }
     }
@@ -166,6 +199,7 @@ class PlaybackService : Service() {
         handler.post(object : Runnable {
             override fun run() {
                 publish()
+
                 if (player != null) {
                     handler.postDelayed(this, 1000)
                 }
@@ -174,61 +208,94 @@ class PlaybackService : Service() {
     }
 
     private fun publish() {
-        val p = player
+        val currentPlayer = player
+
+        val isCurrentlyPlaying = try {
+            currentPlayer?.isPlaying == true
+        } catch (_: Exception) {
+            false
+        }
+
+        val duration = try {
+            currentPlayer?.duration ?: 0
+        } catch (_: Exception) {
+            0
+        }
+
+        val position = try {
+            currentPlayer?.currentPosition ?: 0
+        } catch (_: Exception) {
+            0
+        }
 
         sendBroadcast(
             Intent(STATE).setPackage(packageName).apply {
                 putExtra("title", title)
                 putExtra("artist", artist)
-                putExtra("playing", p?.isPlaying == true)
-                putExtra("duration", p?.duration ?: 0)
-                putExtra("position", p?.currentPosition ?: 0)
+                putExtra("playing", isCurrentlyPlaying)
+                putExtra("duration", duration)
+                putExtra("position", position)
             }
         )
 
-        val manager =
-            getSystemService(NOTIFICATION_SERVICE)
-                as NotificationManager
+        val manager = getSystemService(
+            NOTIFICATION_SERVICE
+        ) as NotificationManager
 
-        manager.notify(NOTIFICATION_ID, notification())
+        manager.notify(
+            NOTIFICATION_ID,
+            notification()
+        )
     }
 
     private fun notification(): Notification {
-        val open = PendingIntent.getActivity(
+
+        val openIntent = Intent(
+            this,
+            MainActivity::class.java
+        )
+
+        val openPendingIntent = PendingIntent.getActivity(
             this,
             1,
-            Intent(this, MainActivity::class.java),
+            openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or
                 PendingIntent.FLAG_IMMUTABLE
         )
 
-        fun action(
+        fun createAction(
             label: String,
             command: String,
-            request: Int
+            requestCode: Int
         ): NotificationCompat.Action {
-
-            val pending = PendingIntent.getService(
-                this,
-                request,
-                Intent(this, PlaybackService::class.java)
-                    .setAction(command),
-                PendingIntent.FLAG_UPDATE_CURRENT or
-                    PendingIntent.FLAG_IMMUTABLE
-            )
 
             val icon = when (command) {
                 PREVIOUS -> android.R.drawable.ic_media_previous
                 NEXT -> android.R.drawable.ic_media_next
-                else -> if (player?.isPlaying == true)
+                else -> if (player?.isPlaying == true) {
                     android.R.drawable.ic_media_pause
-                else android.R.drawable.ic_media_play
+                } else {
+                    android.R.drawable.ic_media_play
+                }
             }
+
+            val serviceIntent = Intent(
+                this,
+                PlaybackService::class.java
+            ).setAction(command)
+
+            val pendingIntent = PendingIntent.getService(
+                this,
+                requestCode,
+                serviceIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    PendingIntent.FLAG_IMMUTABLE
+            )
 
             return NotificationCompat.Action(
                 icon,
                 label,
-                pending
+                pendingIntent
             )
         }
 
@@ -236,34 +303,49 @@ class PlaybackService : Service() {
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle(title)
             .setContentText(artist)
-            .setContentIntent(open)
+            .setContentIntent(openPendingIntent)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOnlyAlertOnce(true)
-            .addAction(action("Previous", PREVIOUS, 2))
-            .addAction(action("Play/Pause", TOGGLE, 3))
-            .addAction(action("Next", NEXT, 4))
+            .setOngoing(player?.isPlaying == true)
+            .addAction(
+                createAction("Previous", PREVIOUS, 2)
+            )
+            .addAction(
+                createAction("Play/Pause", TOGGLE, 3)
+            )
+            .addAction(
+                createAction("Next", NEXT, 4)
+            )
             .build()
     }
 
     private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= 26) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
             val channel = NotificationChannel(
                 CHANNEL,
                 "Rhythm Music",
                 NotificationManager.IMPORTANCE_LOW
             )
 
-            getSystemService(NotificationManager::class.java)
-                .createNotificationChannel(channel)
+            val manager = getSystemService(
+                NotificationManager::class.java
+            )
+
+            manager.createNotificationChannel(channel)
         }
     }
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+
         player?.release()
         player = null
+
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
 }
