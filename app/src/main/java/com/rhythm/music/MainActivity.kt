@@ -139,7 +139,7 @@ class MainActivity : Activity() {
             setTextColor(Color.WHITE)
             setHintTextColor(muted)
             textSize = 15f
-            singleLine = true
+            setSingleLine(true)
             imeOptions = EditorInfo.IME_ACTION_SEARCH
             inputType = InputType.TYPE_CLASS_TEXT
             setPadding(dp(16), 0, dp(16), 0)
