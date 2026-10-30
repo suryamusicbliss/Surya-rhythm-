@@ -49,8 +49,7 @@ jobs:
           test -f app/src/main/AndroidManifest.xml
 
       - name: Build Rhythm APK
-        run: |
-          gradle --no-daemon --stacktrace :app:assembleDebug
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
 
       - name: Upload Rhythm APK
         uses: actions/upload-artifact@v4
