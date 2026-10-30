@@ -51,7 +51,7 @@ jobs:
             echo "::error::JAMENDO_CLIENT_ID secret is missing"
             exit 1
           fi          
-      - name: Build Rhythm APK
+            - name: Build Rhythm APK
         working-directory: Rhythm-Android-Project-SDK-Workflow
         env:
           JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
