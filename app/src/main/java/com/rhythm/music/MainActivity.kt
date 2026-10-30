@@ -689,5 +689,74 @@ class MainActivity : AppCompatActivity() {
             "$playStatus  $currentTitle  •  $currentArtist"
     }
 
-    private fun getPlaylistNames(): Set<String> {
-        return prefs.get
+        private fun getPlaylistNames(): Set<String> {
+        return prefs.getStringSet("playlists", emptySet())?.toSet()
+            ?: emptySet()
+    }
+
+    private fun savePlaylistNames(names: Set<String>) {
+        prefs.edit()
+            .putStringSet("playlists", names.toSet())
+            .apply()
+    }
+
+    private fun showPlaylists() {
+        content.removeAllViews()
+
+        val playlists = getPlaylistNames()
+
+        val createButton = makeButton("CREATE NEW PLAYLIST")
+        content.addView(createButton)
+
+        createButton.setOnClickListener {
+            val input = EditText(this).apply {
+                hint = "Enter playlist name"
+                setSingleLine(true)
+            }
+
+            AlertDialog.Builder(this)
+                .setTitle("Create Playlist")
+                .setView(input)
+                .setPositiveButton("CREATE") { _, _ ->
+                    val name = input.text.toString().trim()
+
+                    if (name.isNotEmpty()) {
+                        val updated = getPlaylistNames().toMutableSet()
+                        updated.add(name)
+                        savePlaylistNames(updated)
+                        showPlaylists()
+                        showHint("Playlist created")
+                    } else {
+                        showHint("Enter a playlist name")
+                    }
+                }
+                .setNegativeButton("CANCEL", null)
+                .show()
+        }
+
+        if (playlists.isEmpty()) {
+            addMessage("No playlists created yet.")
+            return
+        }
+
+        playlists.sorted().forEach { name ->
+            val item = TextView(this).apply {
+                text = "♫  $name"
+                textSize = 16f
+                setTextColor(white)
+                setPadding(16, 18, 16, 18)
+                setBackgroundColor(panel)
+            }
+
+            content.addView(
+                item,
+                LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin = 8
+                }
+            )
+        }
+    }
+}
