@@ -11,7 +11,6 @@ import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
@@ -120,6 +119,18 @@ class MainActivity : AppCompatActivity() {
         receiverRegistered = true
     }
 
+    override fun onDestroy() {
+        if (receiverRegistered) {
+            unregisterReceiver(receiver)
+            receiverRegistered = false
+        }
+        super.onDestroy()
+    }
+
+    private fun showHint(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
     private fun buildHome() {
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -164,7 +175,7 @@ class MainActivity : AppCompatActivity() {
             setHintTextColor(muted)
             setTextColor(white)
             textSize = 15f
-            singleLine = true
+            isSingleLine = true
             inputType = InputType.TYPE_CLASS_TEXT
             setPadding(16, 10, 16, 10)
             setBackgroundColor(panel)
@@ -342,7 +353,6 @@ class MainActivity : AppCompatActivity() {
 
                 val json = JSONObject(response)
                 val results = json.optJSONArray("results")
-
                 val foundTracks = mutableListOf<Track>()
 
                 if (results != null) {
@@ -382,7 +392,9 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 runOnUiThread {
                     statusText.text = "Search failed. Check your internet."
-                    showHint("Unable to load songs: ${e.message ?: "Network error"}")
+                    showHint(
+                        "Unable to load songs: ${e.message ?: "Network error"}"
+                    )
                 }
             } finally {
                 connection?.disconnect()
@@ -563,14 +575,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         try {
-            startService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ContextCompat.startForegroundService(this, intent)
+            } else {
+                startService(intent)
+            }
         } catch (e: Exception) {
             showHint("Player action failed")
         }
     }
 
     private fun openPlayer() {
-        val dialog = AlertDialog.Builder(this)
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(24, 20, 24, 12)
@@ -601,24 +616,24 @@ class MainActivity : AppCompatActivity() {
 
         layout.addView(seekBar)
 
-        seekBar.setOnSeekBarChangeListener(object :
-            SeekBar.OnSeekBarChangeListener {
+        seekBar.setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: SeekBar?,
+                    progress: Int,
+                    fromUser: Boolean
+                ) {
+                }
 
-            override fun onProgressChanged(
-                seekBar: SeekBar?,
-                progress: Int,
-                fromUser: Boolean
-            ) {
-            }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                }
 
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    val progress = seekBar?.progress ?: return
+                    sendAction(ACTION_SEEK, progress)
+                }
             }
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                val progress = seekBar?.progress ?: return
-                sendAction(ACTION_SEEK, progress)
-            }
-        })
+        )
 
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -641,7 +656,7 @@ class MainActivity : AppCompatActivity() {
             )
         )
 
-        val playerDialog = dialog
+        val playerDialog = AlertDialog.Builder(this)
             .setTitle("RHYTHM PLAYER")
             .setView(layout)
             .setNegativeButton("CLOSE", null)
@@ -674,23 +689,5 @@ class MainActivity : AppCompatActivity() {
             "$playStatus  $currentTitle  •  $currentArtist"
     }
 
-    private fun showPlaylists() {
-        val names = getPlaylistNames().toMutableSet()
-
-        val input = EditText(this).apply {
-            hint = "Enter playlist name"
-            setTextColor(white)
-            setHintTextColor(muted)
-        }
-
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(24, 10, 24, 10)
-            addView(input)
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("Create playlist")
-            .setView(layout)
-            .setPositiveButton("CREATE") { _, _ ->
-                val name 
+    private fun getPlaylistNames(): Set<String> {
+        return prefs.get
