@@ -1,6 +1,7 @@
 package com.rhythm.music
 
 import android.app.Activity
+import android.app.Dialog
 import android.os.Bundle
 import android.graphics.Color
 import android.graphics.Typeface
@@ -30,6 +31,15 @@ private val muted = Color.rgb(179, 179, 179)
     private lateinit var searchInput: EditText
     private lateinit var miniTitle: TextView
     private var player: MediaPlayer? = null
+    private var currentSongName = "Nothing playing"
+    private var currentSongArtist = "Unknown artist"
+    private var isLiked: Boolean = false
+    private lateinit var playerTitle: TextView
+private lateinit var playerArtist: TextView
+private lateinit var seekBar: SeekBar
+private lateinit var durationText: TextView
+private lateinit var likeButton: TextView
+private var isPlayerVisible = false
 
     private fun dp(v: Int): Int =
         (v * resources.displayMetrics.density).toInt()
@@ -226,6 +236,11 @@ private val muted = Color.rgb(179, 179, 179)
         }
 
         miniTitle = label("Nothing playing", 13f, Color.WHITE, true)
+        miniTitle.setOnClickListener {
+    if (currentSongName != "Nothing playing") {
+        openPlayerScreen()
+    }
+        }
         mini.addView(miniTitle, LinearLayout.LayoutParams(0, -2, 1f))
 
         val playPause = TextView(this).apply {
@@ -261,7 +276,39 @@ private val muted = Color.rgb(179, 179, 179)
 content.addView(developerCredit)
         setContentView(root)
     }
+     private fun openPlayerScreen() {
+    val dialog = Dialog(this)
+    val layout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER
+        setPadding(dp(24), dp(30), dp(24), dp(30))
+        setBackgroundColor(bg)
+    }
 
+    val artwork = TextView(this).apply {
+        text = "♫"
+        textSize = 100f
+        gravity = Gravity.CENTER
+        setTextColor(gold)
+        background = rounded(panel, 24)
+    }
+    layout.addView(artwork, LinearLayout.LayoutParams(-1, dp(280)))
+
+    layout.addView(label("NOW PLAYING", 12f, gold, true))
+    layout.addView(label(currentSongName, 24f, Color.WHITE, true))
+    layout.addView(label(currentSongArtist, 15f, muted))
+
+    val close = Button(this).apply {
+        text = "CLOSE PLAYER"
+        setOnClickListener { dialog.dismiss() }
+    }
+    layout.addView(close)
+
+    dialog.setContentView(layout)
+    dialog.window?.setLayout(-1, -1)
+    dialog.show()
+    dialog.window?.setLayout(-1, -1)
+     }
     private fun searchMusic() {
         val term = searchInput.text.toString().trim()
         if (term.isEmpty()) {
@@ -314,7 +361,7 @@ content.addView(developerCredit)
                             textSize = 20f
                             setTextColor(gold)
                             setPadding(dp(12), dp(8), dp(5), dp(8))
-                            setOnClickListener { playMusic(audio, name) }
+                            setOnClickListener { playMusic(audio, name, artist) }
                         }
                         item.addView(play)
 
@@ -332,31 +379,52 @@ content.addView(developerCredit)
         }
     }
 
-    private fun playMusic(audioUrl: String, name: String) {
-        if (audioUrl.isBlank()) return
+    private fun playMusic(
+    audioUrl: String,
+    name: String,
+    artist: String = "Unknown artist"
+) {
+    if (audioUrl.isBlank()) return
 
-        try {
-            player?.release()
-            player = MediaPlayer().apply {
-                setDataSource(audioUrl)
-                setOnPreparedListener {
-                    it.start()
-                    miniTitle.text = name
-                }
-                setOnErrorListener { _, _, _ ->
-                    Toast.makeText(this@MainActivity, "Playback failed", Toast.LENGTH_SHORT).show()
-                    true
-                }
-                prepareAsync()
-            }
-        } catch (_: Exception) {
-            Toast.makeText(this, "Unable to play this track", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun onDestroy() {
+    try {
         player?.release()
-        player = null
-        super.onDestroy()
+
+        currentSongName = name
+        currentSongArtist = artist
+        miniTitle.text = name
+
+        player = MediaPlayer().apply {
+            setDataSource(audioUrl)
+
+            setOnPreparedListener {
+                it.start()
+                miniTitle.text = currentSongName
+            }
+
+            setOnErrorListener { _, _, _ ->
+                Toast.makeText(
+                    this@MainActivity,
+                    "Playback failed",
+                    Toast.LENGTH_SHORT
+                ).show()
+                true
+            }
+
+            prepareAsync()
+        }
+
+    } catch (_: Exception) {
+        Toast.makeText(
+            this,
+            "Unable to play this track",
+            Toast.LENGTH_SHORT
+        ).show()
     }
+}
+
+override fun onDestroy() {
+    player?.release()
+    player = null
+    super.onDestroy()
+}
 }
