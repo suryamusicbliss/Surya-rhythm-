@@ -322,7 +322,7 @@ content.addView(developerCredit)
         thread {
             try {
                 val url = URL(
-                    "https://api.jamendo.com/v3.0/tracks/?client_id=demo&format=json&limit=15&search=" +
+                    "https://api.jamendo.com/v3.0/tracks/?client_id=1c57991d&format=json&limit=15&search=" +
                         URLEncoder.encode(term, "UTF-8")
                 )
                 val connection = url.openConnection() as HttpURLConnection
