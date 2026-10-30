@@ -42,16 +42,38 @@ jobs:
 
       - name: Check project files
         run: |
-          echo "Checking Android project..."
           test -f settings.gradle.kts
           test -f build.gradle.kts
           test -f app/build.gradle.kts
           test -f app/src/main/AndroidManifest.xml
 
-      - name: Build Rhythm APK
-        run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Build and capture errors
+        id: build
+        shell: bash
+        run: |
+          set +e
+          gradle --no-daemon --stacktrace :app:assembleDebug > build.log 2>&1
+          RESULT=$?
+
+          echo "Build exit code: $RESULT" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Build output (last 100 lines)" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 100 build.log >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          exit $RESULT
+
+      - name: Upload diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhythm-build-log
+          path: build.log
+          if-no-files-found: ignore
 
       - name: Upload Rhythm APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: rhythm-debug-apk
