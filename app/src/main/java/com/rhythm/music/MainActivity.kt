@@ -22,10 +22,10 @@ import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
 
-    private val bg = Color.rgb(18, 18, 18)
-private val panel = Color.rgb(40, 40, 40)
-private val gold = Color.rgb(30, 215, 96)
-private val muted = Color.rgb(179, 179, 179)
+    private val bg = Color.rgb(10, 13, 19)
+private val panel = Color.rgb(27, 34, 45)
+private val gold = Color.rgb(184, 199, 217)
+private val muted = Color.rgb(157, 169, 184)
 
     private lateinit var results: LinearLayout
     private lateinit var searchInput: EditText
@@ -113,7 +113,8 @@ private var isPlayerVisible = false
             setPadding(dp(20), dp(22), dp(20), dp(22))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(25, 70, 43), Color.rgb(18, 18, 18))
+                intArrayOf( Color.rgb(42, 57, 78),Color.rgb(10, 13, 19)
+)
             ).apply { cornerRadius = dp(24).toFloat() }
         }
 
@@ -213,7 +214,7 @@ private var isPlayerVisible = false
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setPadding(dp(10), dp(12), dp(10), dp(12))
-            setBackgroundColor(Color.rgb(20, 21, 26))
+            setBackgroundColor(Color.rgb(15, 20, 29))
         }
 
         listOf("⌂  Home", "⌕  Search", "♡  Liked", "♫  Library").forEach { item ->
@@ -232,7 +233,7 @@ private var isPlayerVisible = false
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(14), dp(10), dp(14), dp(10))
-            background = rounded(Color.rgb(43, 39, 32), 14)
+            background = rounded(Color.rgb(35, 46, 62), 14)
         }
 
         miniTitle = label("Nothing playing", 13f, Color.WHITE, true)
