@@ -278,23 +278,29 @@ hero.addView(
         }
         mini.addView(miniTitle, LinearLayout.LayoutParams(0, -2, 1f))
 
-        val playPause = TextView(this).apply {
-            text = "▶"
-            textSize = 20f
-            setTextColor(gold)
-            setPadding(dp(14), dp(5), dp(5), dp(5))
-            setOnClickListener {
-                try {
-                    if (player?.isPlaying == true) {
-                        player?.pause()
-                        text = "▶"
-                    } else {
-                        player?.start()
-                        text = "Ⅱ"
-                    }
-                } catch (_: Exception) { }
+val playPause = TextView(this).apply {
+    text = "▶"
+    textSize = 24f
+    setTextColor(gold)
+    setPadding(dp(14), dp(5), dp(5), dp(5))
+
+    setOnClickListener {
+        try {
+            val musicPlayer = player
+
+            if (musicPlayer != null) {
+                if (musicPlayer.isPlaying) {
+                    musicPlayer.pause()
+                    text = "▶"
+                } else {
+                    musicPlayer.start()
+                    text = "Ⅱ"
+                }
             }
-        }
+        } catch (_: Exception) { }
+    }
+}
+
         mini.addView(playPause)
         val miniParams = LinearLayout.LayoutParams(-1, dp(52))
         miniParams.setMargins(dp(14), dp(4), dp(14), dp(8))
@@ -385,7 +391,8 @@ private fun openPlayerScreen() {
     addSpace(layout, 30)
 
     val playPause = Button(this).apply {
-        text = if (player?.isPlaying == true) "PAUSE" else "PLAY"
+       text = if (player?.isPlaying == true) "Ⅱ" else "▶"
+textSize = 30f 
         setTextColor(Color.rgb(10, 13, 19))
         setBackgroundTintList(
             android.content.res.ColorStateList.valueOf(gold)
@@ -397,10 +404,10 @@ private fun openPlayerScreen() {
             if (musicPlayer != null) {
                 if (musicPlayer.isPlaying) {
                     musicPlayer.pause()
-                    text = "PLAY"
+                    text = "▶"
                 } else {
                     musicPlayer.start()
-                    text = "PAUSE"
+                    text = "Ⅱ"
                 }
             }
         }
