@@ -25,17 +25,33 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Configure Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
+      - name: Configure preinstalled Android SDK
         shell: bash
         run: |
-          set -e
-          SDKMANAGER=$(find "$ANDROID_HOME" -type f -name sdkmanager | sort -V | tail -n 1)
-          echo "Using SDK Manager: $SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses || true
-          "$SDKMANAGER" --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          set -euo pipefail
+
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+
+          echo "Android SDK: $SDK_ROOT"
+          test -d "$SDK_ROOT"
+
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::sdkmanager not found"
+            exit 1
+          fi
+
+          echo "Using: $SDKMANAGER"
+
+          yes | "$SDKMANAGER" --licenses > /tmp/android-licenses.log 2>&1 || true
+
+          "$SDKMANAGER" --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -52,35 +68,48 @@ jobs:
           fi
 
       - name: Locate Android project
+        shell: bash
         run: |
-          echo "Searching for Gradle project..."
           find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \)
 
       - name: Build Rhythm APK
         env:
           JAMENDO_CLIENT_ID: ${{ secrets.JAMENDO_CLIENT_ID }}
+        shell: bash
         run: |
+          set -euo pipefail
+
           SETTINGS_FILE=$(find . -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -n 1)
+
           if [ -z "$SETTINGS_FILE" ]; then
             echo "::error::Gradle settings file not found"
             exit 1
           fi
+
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
           echo "Building from: $PROJECT_DIR"
+
           cd "$PROJECT_DIR"
           gradle --no-daemon --stacktrace :app:assembleDebug
 
       - name: Verify APK
+        shell: bash
         run: |
+          set -euo pipefail
+
           APK=$(find . -type f -path "*/app/build/outputs/apk/debug/app-debug.apk" | head -n 1)
+
           if [ -z "$APK" ]; then
             echo "::error::APK file not found"
             exit 1
           fi
-          echo "Found APK: $APK"
+
+          echo "APK found: $APK"
           ls -lh "$APK"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 8
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          "$SDK_ROOT/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 8
+          "$SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose "$APK"
 
       - name: Upload Rhythm APK
         uses: actions/upload-artifact@v4
