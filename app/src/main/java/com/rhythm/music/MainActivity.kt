@@ -1,13 +1,18 @@
 package com.rhythm.music
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.os.Bundle
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.media.MediaPlayer
+import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.inputmethod.EditorInfo
 import android.widget.*
 import android.text.InputType
-import android.media.MediaPlayer
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -16,190 +21,327 @@ import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
 
-    private lateinit var status: TextView
+    private val bg = Color.rgb(12, 13, 17)
+    private val panel = Color.rgb(27, 28, 34)
+    private val gold = Color.rgb(225, 190, 125)
+    private val muted = Color.rgb(155, 153, 148)
+
     private lateinit var results: LinearLayout
+    private lateinit var searchInput: EditText
+    private lateinit var miniTitle: TextView
     private var player: MediaPlayer? = null
+
+    private fun dp(v: Int): Int =
+        (v * resources.displayMetrics.density).toInt()
+
+    private fun rounded(color: Int, radius: Int = 18): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radius).toFloat()
+        }
+    }
+
+    private fun label(
+        value: String,
+        size: Float,
+        color: Int,
+        bold: Boolean = false
+    ): TextView {
+        return TextView(this).apply {
+            text = value
+            textSize = size
+            setTextColor(color)
+            if (bold) setTypeface(null, Typeface.BOLD)
+        }
+    }
+
+    private fun addSpace(parent: LinearLayout, height: Int) {
+        parent.addView(View(this), LinearLayout.LayoutParams(1, dp(height)))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        window.statusBarColor = Color.rgb(15, 17, 27)
-        window.navigationBarColor = Color.rgb(15, 17, 27)
+        window.statusBarColor = bg
+        window.navigationBarColor = bg
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(20, 28, 20, 16)
-            setBackgroundColor(Color.rgb(15, 17, 27))
+            setBackgroundColor(bg)
         }
-
-        root.addView(TextView(this).apply {
-            text = "RHYTHM"
-            textSize = 30f
-            setTextColor(Color.WHITE)
-        })
-
-        val input = EditText(this).apply {
-            hint = "Search songs"
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.LTGRAY)
-            inputType = InputType.TYPE_CLASS_TEXT
-            setSingleLine(true)
-        }
-
-        root.addView(input)
-
-        root.addView(Button(this).apply {
-            text = "Set Jamendo Client ID"
-            setOnClickListener {
-                val field = EditText(this@MainActivity)
-                field.hint = "Enter Client ID"
-
-                val prefs = getSharedPreferences("rhythm", MODE_PRIVATE)
-                field.setText(prefs.getString("client_id", ""))
-
-                AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Jamendo API Setup")
-                    .setView(field)
-                    .setPositiveButton("Save") { _, _ ->
-                        prefs.edit()
-                            .putString("client_id", field.text.toString().trim())
-                            .apply()
-                        status.text = "Client ID saved"
-                    }
-                    .setNegativeButton("Cancel", null)
-                    .show()
-            }
-        })
-
-        root.addView(Button(this).apply {
-            text = "Search Music"
-            setOnClickListener {
-                val term = input.text.toString().trim()
-                if (term.isNotEmpty()) searchMusic(term)
-            }
-        })
-
-        status = TextView(this).apply {
-            text = "Welcome to Rhythm"
-            setTextColor(Color.WHITE)
-            setPadding(0, 15, 0, 10)
-        }
-        root.addView(status)
 
         val scroll = ScrollView(this)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(22), dp(22), dp(120))
+        }
+
+        scroll.addView(content)
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val brand = label("RHYTHM", 27f, gold, true)
+        header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
+        header.addView(label("●  PREMIUM", 11f, gold, true))
+        content.addView(header)
+
+        addSpace(content, 8)
+        content.addView(label("FEEL EVERY BEAT", 10f, muted, true))
+        addSpace(content, 28)
+
+        val greeting = label("Your sound.\nYour universe.", 31f, Color.WHITE, true)
+        content.addView(greeting)
+
+        addSpace(content, 18)
+
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(22), dp(20), dp(22))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(75, 57, 38), Color.rgb(25, 25, 30))
+            ).apply { cornerRadius = dp(24).toFloat() }
+        }
+
+        hero.addView(label("✦  THE RHYTHM EXPERIENCE", 11f, gold, true))
+        addSpace(hero, 16)
+        hero.addView(label("Music that\nmoves with you.", 25f, Color.WHITE, true))
+        addSpace(hero, 8)
+        hero.addView(label("Discover your next favourite sound.", 13f, Color.LTGRAY))
+        addSpace(hero, 18)
+
+        val explore = Button(this).apply {
+            text = "EXPLORE MUSIC"
+            setTextColor(Color.BLACK)
+            textSize = 12f
+            setTypeface(null, Typeface.BOLD)
+            background = rounded(gold, 24)
+            setOnClickListener {
+                scroll.smoothScrollTo(0, searchInput.top)
+                searchInput.requestFocus()
+            }
+        }
+        hero.addView(explore, LinearLayout.LayoutParams(-2, dp(46)))
+        content.addView(hero)
+
+        addSpace(content, 28)
+        content.addView(label("DISCOVER", 12f, gold, true))
+        addSpace(content, 12)
+        content.addView(label("Find your vibe", 23f, Color.WHITE, true))
+        addSpace(content, 14)
+
+        searchInput = EditText(this).apply {
+            hint = "Search songs or artists"
+            setTextColor(Color.WHITE)
+            setHintTextColor(muted)
+            textSize = 15f
+            singleLine = true
+            imeOptions = EditorInfo.IME_ACTION_SEARCH
+            inputType = InputType.TYPE_CLASS_TEXT
+            setPadding(dp(16), 0, dp(16), 0)
+            background = rounded(panel, 16)
+        }
+        content.addView(searchInput, LinearLayout.LayoutParams(-1, dp(54)))
+
+        addSpace(content, 10)
+
+        val searchButton = Button(this).apply {
+            text = "SEARCH MUSIC"
+            setTextColor(Color.BLACK)
+            setTypeface(null, Typeface.BOLD)
+            background = rounded(gold, 16)
+            setOnClickListener { searchMusic() }
+        }
+        content.addView(searchButton, LinearLayout.LayoutParams(-1, dp(50)))
+
+        searchInput.setOnEditorActionListener { _, action, _ ->
+            if (action == EditorInfo.IME_ACTION_SEARCH) {
+                searchMusic()
+                true
+            } else false
+        }
+
+        addSpace(content, 28)
+        content.addView(label("YOUR MOOD", 12f, gold, true))
+        addSpace(content, 14)
+
+        val moods = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+
+        val moodNames = listOf("Chill", "Energy", "Focus")
+        moodNames.forEach { mood ->
+            val card = TextView(this).apply {
+                text = "✦  $mood"
+                textSize = 13f
+                gravity = Gravity.CENTER
+                setTextColor(gold)
+                background = rounded(panel, 16)
+                setPadding(dp(12), dp(16), dp(12), dp(16))
+            }
+            val params = LinearLayout.LayoutParams(0, dp(52), 1f)
+            params.marginEnd = dp(7)
+            moods.addView(card, params)
+        }
+        content.addView(moods)
+
+        addSpace(content, 28)
+        content.addView(label("MADE FOR YOUR EARS", 12f, gold, true))
+        addSpace(content, 12)
 
         results = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
+        results.addView(label("Search to discover music.", 14f, muted))
+        content.addView(results)
 
-        scroll.addView(results)
+        val bottom = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(10), dp(12), dp(10), dp(12))
+            setBackgroundColor(Color.rgb(20, 21, 26))
+        }
 
-        root.addView(scroll, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-        ))
+        listOf("⌂  Home", "⌕  Search", "♡  Liked", "♫  Library").forEach { item ->
+            val tab = TextView(this).apply {
+                text = item
+                gravity = Gravity.CENTER
+                textSize = 11f
+                setTextColor(if (item.contains("Home")) gold else muted)
+                setPadding(dp(5), dp(8), dp(5), dp(8))
+            }
+            bottom.addView(tab, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        root.addView(bottom)
+
+        val mini = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = rounded(Color.rgb(43, 39, 32), 14)
+        }
+
+        miniTitle = label("Nothing playing", 13f, Color.WHITE, true)
+        mini.addView(miniTitle, LinearLayout.LayoutParams(0, -2, 1f))
+
+        val playPause = TextView(this).apply {
+            text = "▶"
+            textSize = 20f
+            setTextColor(gold)
+            setPadding(dp(14), dp(5), dp(5), dp(5))
+            setOnClickListener {
+                try {
+                    if (player?.isPlaying == true) {
+                        player?.pause()
+                        text = "▶"
+                    } else {
+                        player?.start()
+                        text = "Ⅱ"
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+        mini.addView(playPause)
+        val miniParams = LinearLayout.LayoutParams(-1, dp(52))
+        miniParams.setMargins(dp(14), dp(4), dp(14), dp(8))
+        root.addView(mini, miniParams)
 
         setContentView(root)
     }
 
-    private fun searchMusic(term: String) {
-        val id = getSharedPreferences("rhythm", MODE_PRIVATE)
-            .getString("client_id", "")
-
-        if (id.isNullOrBlank()) {
-            status.text = "Please set Jamendo Client ID first"
+    private fun searchMusic() {
+        val term = searchInput.text.toString().trim()
+        if (term.isEmpty()) {
+            Toast.makeText(this, "Enter a song or artist name", Toast.LENGTH_SHORT).show()
             return
         }
 
-        status.text = "Searching..."
         results.removeAllViews()
+        results.addView(label("Searching...", 14f, gold))
 
         thread {
             try {
-                val q = URLEncoder.encode(term, "UTF-8")
                 val url = URL(
-                    "https://api.jamendo.com/v3.0/tracks/?client_id=$id&format=json&limit=20&audioformat=mp31&search=$q"
+                    "https://api.jamendo.com/v3.0/tracks/?client_id=demo&format=json&limit=15&search=" +
+                        URLEncoder.encode(term, "UTF-8")
                 )
-
                 val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 15000
-                connection.readTimeout = 15000
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
 
-                val json = connection.inputStream.bufferedReader().use {
-                    it.readText()
-                }
+                val data = connection.inputStream.bufferedReader().use { it.readText() }
                 connection.disconnect()
 
-                val tracks = JSONObject(json).optJSONArray("results")
+                val tracks = JSONObject(data).getJSONArray("results")
 
                 runOnUiThread {
                     results.removeAllViews()
-
-                    if (tracks == null || tracks.length() == 0) {
-                        status.text = "No songs found"
-                        return@runOnUiThread
-                    }
-
-                    status.text = "${tracks.length()} tracks found"
-
                     for (i in 0 until tracks.length()) {
                         val track = tracks.getJSONObject(i)
-                        val name = track.optString("name")
-                        val artist = track.optString("artist_name")
-                        val audio = track.optString("audio")
+                        val name = track.optString("name", "Unknown track")
+                        val artist = track.optString("artist_name", "Unknown artist")
+                        val audio = track.optString("audio", "")
 
                         val item = LinearLayout(this).apply {
-                            orientation = LinearLayout.VERTICAL
-                            setPadding(12, 12, 12, 12)
-                            setBackgroundColor(Color.rgb(34, 37, 53))
+                            orientation = LinearLayout.HORIZONTAL
+                            gravity = Gravity.CENTER_VERTICAL
+                            setPadding(dp(12), dp(13), dp(12), dp(13))
+                            background = rounded(panel, 14)
                         }
 
-                        item.addView(TextView(this).apply {
-                            text = "$name\n$artist"
-                            textSize = 16f
-                            setTextColor(Color.WHITE)
-                        })
+                        val info = LinearLayout(this).apply {
+                            orientation = LinearLayout.VERTICAL
+                        }
+                        info.addView(label(name, 14f, Color.WHITE, true))
+                        info.addView(label(artist, 12f, muted))
+                        item.addView(info, LinearLayout.LayoutParams(0, -2, 1f))
 
-                        item.addView(Button(this).apply {
-                            text = "Play Preview"
-                            setOnClickListener {
-                                playMusic(audio)
-                            }
-                        })
+                        val play = TextView(this).apply {
+                            text = "▶"
+                            textSize = 20f
+                            setTextColor(gold)
+                            setPadding(dp(12), dp(8), dp(5), dp(8))
+                            setOnClickListener { playMusic(audio, name) }
+                        }
+                        item.addView(play)
 
-                        results.addView(item)
+                        val params = LinearLayout.LayoutParams(-1, -2)
+                        params.bottomMargin = dp(9)
+                        results.addView(item, params)
                     }
                 }
-
             } catch (e: Exception) {
                 runOnUiThread {
-                    status.text = "Error: ${e.localizedMessage}"
+                    results.removeAllViews()
+                    results.addView(label("Could not load music. Check your internet or API access.", 13f, muted))
                 }
             }
         }
     }
 
-    private fun playMusic(url: String) {
+    private fun playMusic(audioUrl: String, name: String) {
+        if (audioUrl.isBlank()) return
+
         try {
             player?.release()
-
             player = MediaPlayer().apply {
-                setDataSource(url)
-
+                setDataSource(audioUrl)
                 setOnPreparedListener {
                     it.start()
-                    status.text = "Playing music"
+                    miniTitle.text = name
                 }
-
                 setOnErrorListener { _, _, _ ->
-                    status.text = "Playback failed"
+                    Toast.makeText(this@MainActivity, "Playback failed", Toast.LENGTH_SHORT).show()
                     true
                 }
-
                 prepareAsync()
             }
-
-        } catch (e: Exception) {
-            status.text = "Playback failed"
+        } catch (_: Exception) {
+            Toast.makeText(this, "Unable to play this track", Toast.LENGTH_SHORT).show()
         }
     }
 
