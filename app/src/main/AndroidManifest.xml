@@ -10,7 +10,7 @@
         android:label="Rhythm"
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
 
         <activity
             android:name="com.rhythm.music.MainActivity"
